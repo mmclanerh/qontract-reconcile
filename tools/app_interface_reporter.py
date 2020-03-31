@@ -75,6 +75,7 @@ class Report(object):
 
         # valet
         self.add_report_section('valet', self.slo_section())
+        self.add_report_section('security', self.sec_section())
 
         # promotions
         self.add_report_section(
@@ -345,6 +346,32 @@ def get_performance_parameters():
 
     gqlapi = gql.get_api()
     return gqlapi.query(query)['performance_parameters_v1']
+
+    def sec_section(self):
+        security_parameters = [
+            pp for pp in get_security_parameters()
+            if pp['app']['path'] == self.app['path']
+        ]
+
+        metrics_availability = self.get_security_metrics(
+            security_parameters,
+            self.calculate_security_totals,
+            'container_vulnerability_high_priority'
+        )
+
+        metrics_latency = self.get_security_metrics(
+            security_parameters,
+            self.calculate_security_totals,
+            'container_vulnerability_low_priority'
+        )
+
+        metrics = [
+            *metrics_security_high_prio,
+            *metrics_security_low_prio
+        ]
+
+        if not metrics:
+            return None
 
 
 def get_apps_data(date, month_delta=1):
