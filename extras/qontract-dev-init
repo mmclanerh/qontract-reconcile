@@ -1,0 +1,65 @@
+#!/bin/sh
+
+QHOME="${HOME}/qontract-reconcile"
+export gitlab_pr_submitter_queue_url="dummy_debug_value"
+
+#export QRREPO="https://github.com/app-sre/qontract-reconcile"
+export QRREPO="git@github.com:app-sre/qontract-reconcile.git"
+
+alias qr='qontract-reconcile --config ${QCONFIGFILE}'
+alias qr-dr='qontract-reconcile --config ${QCONFIGFILE} --dry-run'
+alias qr-air='app-interface-reporter --config ${QCONFIGFILE}'
+alias qr-air-dr='app-interface-reporter --config ${QCONFIGFILE} --dry-run'
+alias qr-mkupstream="git remote add upstream ${QRREPO}"
+alias qr-rebase='git fetch upstream;git rebase upstream/master'
+
+qr-reinstall() {
+  python setup.py install
+}
+
+__venv_prefix() {
+  if [ ! -z "${VIRTUAL_ENV}" ]; then
+    # if you hate blue, change this
+    ve_c_blue='\[\e[1;34m\]'
+    ve_c_none='\[\e[0m\]'
+    echo -n "(${ve_c_blue}${VIRTUAL_ENV##*/}${ve_c_none}) "
+  fi
+}
+
+
+cd ${QHOME}
+if [ ! -z ${1} ]; then
+  echo "## Switching to branch: ${1}"
+  git checkout ${1}
+  if [ ${?} -ne 0 ]; then
+    echo "## Error, switching to branch ${1}. Please investigate."
+    exit 1
+  fi
+else
+  echo "## TIP: You can switch to a code branch on load by providing a valid branchname as a parameter to this script."
+fi
+echo "## Loading virtualenv"
+virtualenv venv
+echo "## Sourcing activation"
+. venv/bin/activate
+## prepend venv via __venv_prefix function to git-ps1 prompt, if that exists
+[ ! -z __git_ps1 ] && PROMPT_COMMAND='__git_ps1 "$(__venv_prefix)\u@\h:\w" "\\\$ "'
+echo 0
+echo "## Running setup.py install"
+qr-reinstall
+
+echo ""
+echo "# Helpful aliases/functions:"
+echo "  qr		qontract-reconcile main"
+echo "  qr-dr		qontract-reconsile main + dry-run"
+echo "  qr-mkupstream	add \"upstream\" remote repo, for rebasing/merges/pr-work"
+echo "  qr-rebase	rebase current branch against upstream/master"
+echo "  qr-reinstall	install/update local python bin/libs, required after updating code base"
+echo "  qr-air		app-interface reporter"
+echo "  qr-air-dr	app-interface reporter + dry-run"
+echo ""
+echo "# Be sure to set gitlab_pr_submitter_queue_url to a non-debug value, if needed."
+echo "# Example usage:"
+echo "#   qr-dr aws-support-cases-sos"
+echo "# Good luck!"
+echo ""
